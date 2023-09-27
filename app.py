@@ -15,13 +15,13 @@ app = Flask(__name__)
 creative_text = ""
 
 # Configure your OpenAI API key
-api_key = os.environ.get('copygpt')
+api_key = os.environ.get('YOUR_API_KEY')
 openai.api_key = api_key
 
 #uwierzytelnienie
 authenticated = False
 
-password = b'$2a$10$Tz2xdbpb14ChVIkEvCRV7.AbJVIOMnGrctKBo6VnvpwEu4391.wsW'
+password = b'YOUR_HASHED_PASSWORD'
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -34,7 +34,7 @@ def login():
             authenticated = True
             return redirect(url_for('index'))
         else:
-            return "Złe hasło. Spróbuje ponownie."
+            return "Wrong password. Try again."
 
     return render_template('login.html')
 
