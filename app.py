@@ -62,10 +62,10 @@ def index():
         # Define rulesets based on the selected marketplace
         if selected_marketplace == 'kaufland':
             ruleset = Kaufland_ruleset
-        # elif selected_marketplace == 'cdiscount':
-        #     ruleset = Cdiscount_ruleset
-        # elif selected_marketplace == 'ebay':
-        #     ruleset = ebay_ruleset
+        elif selected_marketplace == 'cdiscount':
+            ruleset = Cdiscount_ruleset
+        elif selected_marketplace == 'ebay':
+            ruleset = ebay_ruleset
         else:
             # Handle other marketplaces or invalid selections here
             return "Invalid marketplace selection"
