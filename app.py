@@ -15,13 +15,18 @@ app = Flask(__name__)
 creative_text = ""
 
 # Configure your OpenAI API key
-api_key = os.environ.get('YOUR_API_KEY')
+api_key = os.environ['YOUR-API-KEY']
 openai.api_key = api_key
 
 #uwierzytelnienie
 authenticated = False
 
-password = b'YOUR_HASHED_PASSWORD'
+password = b'YOUR_HASHED-PASSWORD'
+
+# Create the "Output" folder if it doesn't exist
+output_folder = os.path.join(os.getcwd(), 'Output')
+if not os.path.exists(output_folder):
+    os.makedirs(output_folder)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -58,6 +63,8 @@ def index():
 
         # Get the selected marketplace from the form
         selected_marketplace = request.form['marketplace']
+        selected_language = ""
+        selected_language = request.form['language']
 
         # Define rulesets based on the selected marketplace
         if selected_marketplace == 'kaufland':
@@ -72,29 +79,84 @@ def index():
 
         openai.api_key = api_key
 
+        response_language = "en"  # Default to English
+        if selected_language == 'de':
+            response_language = "de"  # Set to German
+        elif selected_language == 'fr':
+            response_language = "fr"  # Set to French
+        elif selected_language == 'it':
+            response_language = "it"  # Set to Italian
+        elif selected_language == 'es':
+            response_language = "es"  # Set to Spanish
+        elif selected_language == 'pl':
+            response_language = "pl"  # Set to Polish
+        elif selected_language == 'sv':
+            response_language = "sv"  # Set to Swedish
+        elif selected_language == 'nl':
+            response_language = "nl"  # Set to Dutch
+
+        user_message = {"role": "user", "content": creative_text}
+
         completion = openai.ChatCompletion.create(
             model="gpt-4",
             messages=[
-                {"role": "system", "content": ruleset},
-                {"role": "user", "content": creative_text},
-            ],
+            {"role": "system", "content": ruleset},
+            user_message,
+            {"role": "system", "content": f"Response Language: {selected_language}"},  # Add the selected language
+        ],
             max_tokens=6000,
-            temperature=1.0
+            temperature=1.0,
         )
 
         # Extract the AI-generated response
         response = completion.choices[0].message["content"]
 
-        # Add the response to your DataFrame
-        df["Generated Response"] = response
+        # Add the response to your DataFrame based on the selected marketplace
+        if selected_marketplace == 'cdiscount':
+            response_parts = response.split("\n\n")
+            title = response_parts[0]  # Title
+            short_basket_label = response_parts[1]  # Short Basket Label
+            long_wording = response_parts[2]  # Long Wording
+            product_description = response_parts[3]  # Product Description
+            encoded_marketing_description = response_parts[4]  # Encoded Marketing Description
+
+            # Add the response parts to your DataFrame as separate columns
+            df["Title"] = title
+            df["Short Basket Label"] = short_basket_label
+            df["Long Wording"] = long_wording
+            df["Product Description"] = product_description
+            df["Encoded Marketing Description"] = encoded_marketing_description
+
+        elif selected_marketplace == 'kaufland':
+            response_parts = response.split("\n\n")
+            title = response_parts[0]  # Title
+            description = response_parts[1]  # Description
+            short_description = response_parts[2]  # Short Description
+
+            # Add the response parts to your DataFrame as separate columns
+            df["Title"] = title
+            df["Description"] = description
+            df["Short Description"] = short_description
+
+        elif selected_marketplace == 'ebay':
+            response_parts = response.split("\n\n")
+            ebay_title = response_parts[0]  # eBay Title
+            ebay_description = response_parts[1]  # eBay Description
+
+            # Add the response parts to your DataFrame as separate columns
+            df["eBay Title"] = ebay_title
+            df["eBay Description"] = ebay_description
 
         # Save the modified DataFrame back to a new Excel file
-        output_file_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{selected_marketplace}.xlsx")
+        input_file_name = os.path.splitext(input_file.filename)[0]
+        output_file_name = f"{input_file_name}_{selected_marketplace}_{selected_language}.xlsx"
+        output_file_path = os.path.join(output_folder, output_file_name)
         df.to_excel(output_file_path, index=False)
 
-        return redirect(url_for('download_file', filename=f"{selected_marketplace}.xlsx"))
+        return send_file(output_file_path, as_attachment=True, download_name=output_file_name)
 
     return render_template('index.html')
+
 
 # Configuration for file upload
 app.config['UPLOAD_FOLDER'] = os.path.abspath('uploads')  # Use an absolute path
@@ -106,7 +168,8 @@ def download_file(filename):
     return send_file(file_path, as_attachment=True)
 
 Kaufland_ruleset = (
-    f"Based on the following rules, make changes to {creative_text}"
+    f"Generate a product Title, Description and Short Description for the following product based on the provided guidelines:\n"
+    
     "Title:"
     "- Formal guidelines:"
     "- Correct language and grammar."
@@ -134,7 +197,7 @@ Kaufland_ruleset = (
     "- No product condition, shipping, or contact information."
     "- No prices, discounts, or warranty information."
     "- No explanations regarding product testing."
-    "- Recommended description length: 150 to 5000 characters."
+    "- Recommended description length: 500 to 5000 characters."
 
     "Short Description:"
     "- Formal guidelines:"
@@ -148,8 +211,8 @@ Kaufland_ruleset = (
 
 Cdiscount_ruleset = (
     f"Generate a product title, short basket label, long wording, product description, and encoded marketing description for the following product based on the provided guidelines:\n"
-    
-    "1. Product Title (Labels):\n"
+
+    "1. Product Title:\n"
     "- The product title must be written in French and contain the main product information for the purchaser. As a minimum, the title must contain: [Brand] – [Product type] – [Description keywords] – [Model] (for technical products) – [Gender] (if applicable).\n"
     "- Short Basket Label (Limited to 30 characters):\n"
     "   - It must contain, as far as possible (and the limit of the number of characters allowed) the exact references of the product, and imperatively the mark. Example: KODAK Easyshare M530 Orange, salon MANO 6P résine tressée, BAMBISOL Combiné Trio Illico Bora.\n"
@@ -158,17 +221,20 @@ Cdiscount_ruleset = (
     "   - No abbreviations or special characters (slash, anti-slash, etc.), symbols.\n"
     "   - No URL or HTML in the wordings.\n"
     "   - No offer data.\n"
+
     "- Long Wording (Limited to 132 characters):\n"
+
     "   - Texts in French/No rough translations from a foreign language.\n"
     "   - Correct spelling.\n"
     "   - Wording must state the product type.\n"
-    "   - Minimum criteria to enter: [Brand] – [Product type] – [Description keywords] – [Model] (for technical products) – [Gender] (if applicable).\n"
+    "   - Minimum criteria to enter:[Product type] – [Brand] - [Description keywords] – [Model] (for technical products) – [Gender] (if applicable).\n"
     "   - No abbreviations or special characters (slash, anti-slash, etc.), symbols.\n"
     "   - No URL or HTML in the wordings.\n"
     "   - Do not put in too many keywords or parasite words (i.e.: Evening, wedding, christening, bar mitzvah, communion dress).\n"
     "   - No offer data.\n"
 
     "2. Product Description (Limited to 420 characters):\n"
+
     "- The product description. Put yourself in the purchaser’s position and give them the information they need to make a purchase. Warning, only product-specific information which does not change from one vendor to another.\n"
     "- Texts in French/No rough translations from a foreign language.\n"
     "- Correct spelling.\n"
@@ -176,7 +242,7 @@ Cdiscount_ruleset = (
     "- No HTML code.\n"
 
     "3. Encoded Marketing Description (Limited to 5000 characters):\n"
-    "- It allows you to add images, videos, and HTML.\n"
+
     "- Texts in French/No rough translations from a foreign language.\n"
     "- Construct your sentences with subjects, verbs, and complements, avoid telegraphic style.\n"
     "- Correct spelling.\n"
@@ -188,7 +254,8 @@ Cdiscount_ruleset = (
 
 ebay_ruleset = (
 
-    "Title Prompt:\n"
+    "Title:\n"
+
     "\"Create a compelling eBay listing title for a [product type]\"\n\n"
     "Guidelines:\n"
     "1. Ensure the title is clear and concise, with correct spelling, and does not exceed 80 characters.\n"
@@ -198,7 +265,8 @@ ebay_ruleset = (
     "5. Follow the format: \"NEW\" [brand] [product name] [model No] [Variants - size, color] [additional keyword]\n"
     "6. Avoid using entire words in capital letters or special characters.\n\n"
 
-    "Description Prompt:\n"
+    "Description:\n"
+
     "\"Compose a comprehensive eBay item description for a [product type]\"\n\n"
     "Guidelines:\n"
     "1. Ensure the description is clear and detailed, providing essential product information.\n"
@@ -208,11 +276,11 @@ ebay_ruleset = (
     "5. Do not include Top Rated Seller or similar icons or expressions.\n"
     "6. Avoid comments that encourage buyers to rate you.\n"
     "7. Do not use any type of active content like videos, animations, or widgets.\n"
-    "8. Keep the description concise and within the eBay word limit (up to 4,000 characters, but prioritize the first 250 characters).\n"
+    "8. Keep the description concise and within the eBay word limit (up to 4,000 characters, but prioritize the first 500 characters).\n"
     "9. Mention the use of eBay description tools like Crazylister, Sellbrite, 3D Sellers, or Optiseller for efficiency.\n"
     "10. Consider using HTML for proper alignment, bullets, font changes, etc., if you have coding knowledge.\n\n"
 
 )
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=443)
