@@ -8,11 +8,17 @@ This is a web application for generating product copywriting using OpenAI's GPT-
 
 2. **Input Data**: Users can upload an Excel (xlsx) file containing product information. The application processes this data to generate creative copywriting.
 
-3. **Marketplace Selection**: Users can specify the target marketplace for which they want to generate copywriting. Currently, the application supports Kaufland, CDiscount and Ebay but you can extend it to other marketplaces.
+4. **Language Selection**
 
-4. **Copywriting Generation**: The application utilizes OpenAI's GPT-4 to generate product copywriting based on predefined rulesets specific to the selected marketplace. It ensures that generated content adheres to the marketplace's guidelines and formatting requirements.
+The application supports multiple languages, allowing users to choose their preferred language for the generated product copywriting. Language selection can be easily configured for international marketplaces.
 
-5. **Output Excel File**: The generated copywriting is added to the input Excel file, creating a new file with the copywriting included. Users can download this modified Excel file.
+5. **Copywriting Generation**
+
+The application leverages OpenAI's GPT-4 to generate product copywriting based on predefined rulesets specific to the selected marketplace. It ensures that the generated content adheres to the marketplace's guidelines and formatting requirements.
+
+6. **Output Excel File**
+
+The generated copywriting is added to the input Excel file, creating a new file with the copywriting included. Users can download this modified Excel file for their use.
 
 ## Installation and Usage
 
