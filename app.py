@@ -18,7 +18,7 @@ creative_text = ""
 api_key = os.environ['YOUR-API-KEY']
 openai.api_key = api_key
 
-#uwierzytelnienie
+#Authentication
 authenticated = False
 
 password = b'YOUR_HASHED-PASSWORD'
